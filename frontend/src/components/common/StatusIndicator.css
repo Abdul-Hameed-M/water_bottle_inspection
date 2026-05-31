@@ -1,0 +1,42 @@
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.status-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.status-dot {
+  border-radius: 50%;
+}
+
+.status-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.stream-status {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.stream-metrics {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  font-size: 0.875rem;
+}
+
+.stream-metric {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}

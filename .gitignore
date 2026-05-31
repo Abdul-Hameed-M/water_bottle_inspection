@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+dist/
+.vite/
+venv/
+.env
+
+# Python caching
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.ipynb_checkpoints/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Databases & logs
+*.db
+*.log
+backend/storage/failed_bottles/*
+!backend/storage/failed_bottles/.gitkeep
+
+# Temporary uploads / processed videos
+uploads/*
+!uploads/.gitkeep

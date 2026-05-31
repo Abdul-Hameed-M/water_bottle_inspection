@@ -1,0 +1,18 @@
+fastapi==0.111.0
+uvicorn==0.30.1
+websockets==12.0
+python-multipart==0.0.9
+opencv-python==4.9.0.80
+ultralytics>=8.4.56
+sqlalchemy==2.0.30
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+pandas==2.2.2
+reportlab==4.2.0
+python-dotenv==1.0.1
+pydantic==2.7.2
+sqlite3-binary; platform_system=="Windows"
+numpy==1.26.4
+bcrypt==3.2.2
+lap==0.5.13
+psycopg2-binary==2.9.9

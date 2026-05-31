@@ -1,0 +1,13 @@
+# Class order embedded in models/best_v1.pt (production model — do not change indices)
+path: D:/water_bottle_project/dataset
+train: images/train
+val: images/test
+
+names:
+  0: bottle
+  1: proper_fill
+  2: under_fill
+  3: over_fill
+  4: label_proper
+  5: label_torn
+  6: label_missing

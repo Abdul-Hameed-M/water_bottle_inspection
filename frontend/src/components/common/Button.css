@@ -1,0 +1,30 @@
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.button {
+  font-family: inherit;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.button-loading {
+  pointer-events: none;
+}
+
+.button-full-width {
+  width: 100%;
+}
+
+.button-spinner {
+  display: inline-block;
+}
