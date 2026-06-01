@@ -343,7 +343,10 @@ class YOLOInference:
             f_color = self.class_colors.get(f_name, (255, 255, 255, 255))
             f_desc = self.class_descriptive_names.get(f_name, f_name)
             
-            # Draw 2px rectangle outline (hollow, no fill, to keep items visible inside)
+            # Draw semi-transparent background overlay inside bounding box (alpha 0.15 -> 38 out of 255)
+            draw.rectangle([fx1, fy1, fx2, fy2], fill=(f_color[0], f_color[1], f_color[2], 38))
+            
+            # Draw 2px rectangle outline (hollow outline to keep items visible inside)
             draw.rectangle([fx1, fy1, fx2, fy2], outline=f_color, width=2)
             
             # Draw text label above the rectangle (larger and more readable)
@@ -373,7 +376,10 @@ class YOLOInference:
             l_color = self.class_colors.get(l_name, (255, 255, 255, 255))
             l_desc = self.class_descriptive_names.get(l_name, l_name)
             
-            # Draw 2px rectangle outline (hollow, no fill, to keep items visible inside)
+            # Draw semi-transparent background overlay inside bounding box (alpha 0.15 -> 38 out of 255)
+            draw.rectangle([lx1, ly1, lx2, ly2], fill=(l_color[0], l_color[1], l_color[2], 38))
+            
+            # Draw 2px rectangle outline (hollow outline to keep items visible inside)
             draw.rectangle([lx1, ly1, lx2, ly2], outline=l_color, width=2)
             
             # Draw text label above the rectangle (larger and more readable)
@@ -440,7 +446,10 @@ class YOLOInference:
             stats[matched_label_name] += 1
             avg_conf = (fill_conf + label_conf) / 2
             
-            # Draw Thick Bounding Box around the bottle (hollow, no fill, to keep items visible inside)
+            # Draw semi-transparent background overlay inside parent bottle box (alpha 0.15 -> 38 out of 255)
+            draw.rectangle([bx1, by1, bx2, by2], fill=(color[0], color[1], color[2], 38))
+            
+            # Draw Thick Bounding Box around the bottle (hollow outline to keep items visible inside)
             draw.rectangle([bx1, by1, bx2, by2], outline=color, width=4)
 
             # Draw bottle label on the bounding box (Omitted ID as requested, showing Bottle tag)
