@@ -332,7 +332,7 @@ class YOLOInference:
         db_logs_to_insert = []
         
         # Render using PIL for high contrast, clean shapes, and rounded cards
-        img_pil = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+        img_pil = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)).convert("RGBA")
         draw = ImageDraw.Draw(img_pil, "RGBA")
         
         # 1. Draw sub-detection bounding boxes first (fills)
@@ -489,7 +489,7 @@ class YOLOInference:
             if status == "FAIL":
                 now = time.time()
                 if obj_id not in self.last_screenshot_saved or (now - self.last_screenshot_saved[obj_id]) > 10.0:
-                    annotated_shot = cv2.cvtColor(np.array(img_pil), cv2.COLOR_RGB2BGR)
+                    annotated_shot = cv2.cvtColor(np.array(img_pil.convert("RGB")), cv2.COLOR_RGB2BGR)
                     screenshot_path = save_failed_screenshot(annotated_shot, obj_id, matched_fill_name, matched_label_name, inspection_id)
                     detection_info["screenshot_path"] = screenshot_path
                     self.last_screenshot_saved[obj_id] = now
@@ -537,7 +537,7 @@ class YOLOInference:
                 db.close()
                 
         # Convert PIL image back to CV2 format (BGR)
-        annotated_frame = cv2.cvtColor(np.array(img_pil), cv2.COLOR_RGB2BGR)
+        annotated_frame = cv2.cvtColor(np.array(img_pil.convert("RGB")), cv2.COLOR_RGB2BGR)
         
         # Calculate latency
         latency = (time.time() - start_time) * 1000.0 # ms
