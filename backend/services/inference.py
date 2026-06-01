@@ -343,10 +343,7 @@ class YOLOInference:
             f_color = self.class_colors.get(f_name, (255, 255, 255, 255))
             f_desc = self.class_descriptive_names.get(f_name, f_name)
             
-            # Draw semi-transparent background overlay inside bounding box (alpha 0.15 -> 38 out of 255)
-            draw.rectangle([fx1, fy1, fx2, fy2], fill=(f_color[0], f_color[1], f_color[2], 38))
-            
-            # Draw 2px rectangle outline
+            # Draw 2px rectangle outline (hollow, no fill, to keep items visible inside)
             draw.rectangle([fx1, fy1, fx2, fy2], outline=f_color, width=2)
             
             # Draw text label above the rectangle (larger and more readable)
@@ -376,10 +373,7 @@ class YOLOInference:
             l_color = self.class_colors.get(l_name, (255, 255, 255, 255))
             l_desc = self.class_descriptive_names.get(l_name, l_name)
             
-            # Draw semi-transparent background overlay inside bounding box (alpha 0.15 -> 38 out of 255)
-            draw.rectangle([lx1, ly1, lx2, ly2], fill=(l_color[0], l_color[1], l_color[2], 38))
-            
-            # Draw 2px rectangle outline
+            # Draw 2px rectangle outline (hollow, no fill, to keep items visible inside)
             draw.rectangle([lx1, ly1, lx2, ly2], outline=l_color, width=2)
             
             # Draw text label above the rectangle (larger and more readable)
@@ -446,33 +440,27 @@ class YOLOInference:
             stats[matched_label_name] += 1
             avg_conf = (fill_conf + label_conf) / 2
             
-            # Draw semi-transparent background overlay inside parent bottle box
-            draw.rectangle([bx1, by1, bx2, by2], fill=(color[0], color[1], color[2], 38))
-            
-            # Draw Thick Bounding Box around the bottle
+            # Draw Thick Bounding Box around the bottle (hollow, no fill, to keep items visible inside)
             draw.rectangle([bx1, by1, bx2, by2], outline=color, width=4)
 
-            # Draw bottle ID label on the bounding box (Omitted as requested to remove Bottle ID from display)
-            # cls_name = bottle.get('name', 'bottle')
-            # desc_name = self.class_descriptive_names.get(cls_name, cls_name)
-            # clean_class_name = desc_name.replace('_', ' ').title()
-            # bottle_label = f"{clean_class_name} | ID {obj_id}"
-            # try:
-            #     bw = draw.textlength(bottle_label, font=self.font)
-            # except Exception:
-            #     bw = len(bottle_label) * 11.5
-            # 
-            # bx_label_x1 = bx1
-            # bx_label_y1 = by1 - 24
-            # bx_label_x2 = bx1 + bw + 8
-            # bx_label_y2 = by1
-            # 
-            # # Draw bottle ID label background
-            # draw.rectangle([bx_label_x1, bx_label_y1, bx_label_x2, bx_label_y2], fill=color)
-            # 
-            # # Draw bottle ID text
-            # bottle_text_color = (0, 0, 0, 255) if sum(color[:3]) > 380 else (255, 255, 255, 255)
-            # draw.text((bx_label_x1 + 4, bx_label_y1 + 2), bottle_label, fill=bottle_text_color, font=self.font)
+            # Draw bottle label on the bounding box (Omitted ID as requested, showing Bottle tag)
+            bottle_label = f"Bottle ({status})"
+            try:
+                bw = draw.textlength(bottle_label, font=self.font)
+            except Exception:
+                bw = len(bottle_label) * 11.5
+
+            bx_label_x1 = bx1
+            bx_label_y1 = max(0, by1 - 24)
+            bx_label_x2 = bx1 + bw + 8
+            bx_label_y2 = by1
+
+            # Draw bottle label background
+            draw.rectangle([bx_label_x1, bx_label_y1, bx_label_x2, bx_label_y2], fill=color)
+
+            # Draw bottle text
+            bottle_text_color = (0, 0, 0, 255) if sum(color[:3]) > 380 else (255, 255, 255, 255)
+            draw.text((bx_label_x1 + 4, bx_label_y1 + 2), bottle_label, fill=bottle_text_color, font=self.font)
             
             # Append detection details
             detection_info = {
