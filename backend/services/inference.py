@@ -34,33 +34,34 @@ logger = logging.getLogger(__name__)
 class YOLOInference:
     def __init__(self, model_path: str = None):
         self.class_descriptive_names = {
-            "bottle": "bottle",
-            "proper_fill": "proper_fill",
-            "under_fill": "under_fill",
-            "over_fill": "over_fill",
-            "label_proper": "label_proper",
-            "label_torn": "label_torn",
-            "label_missing": "label_missing"
+            "bottle": "Bottle",
+            "proper_fill": "Proper Fill",
+            "under_fill": "Under Fill",
+            "over_fill": "Over Fill",
+            "label_proper": "Label Proper",
+            "label_torn": "Label Torn",
+            "label_missing": "Label Missing"
         }
         
         self.class_colors = {
-            "bottle": (30, 144, 255, 255),       # Blue (#1E90FF)
-            "proper_fill": (0, 230, 118, 255),    # Green (#00E676)
-            "under_fill": (255, 59, 48, 255),     # Red (#FF3B30)
-            "over_fill": (255, 214, 10, 255),     # Yellow (#FFD60A)
-            "label_proper": (138, 43, 226, 255),  # Purple (#8A2BE2)
-            "label_torn": (255, 0, 255, 255),     # Magenta (#FF00FF)
-            "label_missing": (255, 255, 255, 255) # White (#FFFFFF)
+            "bottle": (30, 144, 255, 255),       # Deep Sky Blue (#1E90FF)
+            "proper_fill": (50, 205, 50, 255),     # Lime Green (#32CD32)
+            "under_fill": (255, 127, 80, 255),    # Coral Orange (#FF7F50)
+            "over_fill": (255, 215, 0, 255),      # Gold Yellow (#FFD700)
+            "label_proper": (186, 85, 211, 255),  # Violet Purple (#BA55D3)
+            "label_torn": (255, 20, 147, 255),    # Hot Pink (#FF1493)
+            "label_missing": (255, 0, 0, 255)     # Bright Red (#FF0000)
         }
         
         # Class-wise confidence thresholds (default values)
+        # Lowered slightly to ensure stable detection under varying industrial light
         self.class_confidence_thresholds = {
-            "bottle": 0.40,
-            "proper_fill": 0.55,
-            "under_fill": 0.35,
+            "bottle": 0.35,
+            "proper_fill": 0.35,
+            "under_fill": 0.30,
             "over_fill": 0.30,
-            "label_proper": 0.50,
-            "label_torn": 0.35,
+            "label_proper": 0.35,
+            "label_torn": 0.30,
             "label_missing": 0.30
         }
         
@@ -335,73 +336,7 @@ class YOLOInference:
         img_pil = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)).convert("RGBA")
         draw = ImageDraw.Draw(img_pil, "RGBA")
         
-        # 1. Draw sub-detection bounding boxes first (fills)
-        for f in fills:
-            fx1, fy1, fx2, fy2 = f["bbox"]
-            f_name = f["name"]
-            f_conf = f["conf"]
-            f_color = self.class_colors.get(f_name, (255, 255, 255, 255))
-            f_desc = self.class_descriptive_names.get(f_name, f_name)
-            
-            # Draw semi-transparent background overlay inside bounding box (alpha 0.15 -> 38 out of 255)
-            draw.rectangle([fx1, fy1, fx2, fy2], fill=(f_color[0], f_color[1], f_color[2], 38))
-            
-            # Draw 2px rectangle outline (hollow outline to keep items visible inside)
-            draw.rectangle([fx1, fy1, fx2, fy2], outline=f_color, width=2)
-            
-            # Draw text label above the rectangle (larger and more readable)
-            f_label = f"{f_desc} ({f_conf * 100:.1f}%)"
-            try:
-                tw = draw.textlength(f_label, font=self.font)
-            except Exception:
-                tw = len(f_label) * 11.5  # Adjusted for larger font
-
-            tx1 = fx1
-            ty1 = max(0, fy1 - 24)  # Increased from 18 to 24
-            tx2 = tx1 + tw + 8
-            ty2 = ty1 + 24  # Increased from 18 to 24
-
-            # Solid label background for high contrast
-            draw.rectangle([tx1, ty1, tx2, ty2], fill=f_color)
-
-            # Larger label text color dynamically selected based on color brightness
-            f_text_color = (0, 0, 0, 255) if sum(f_color[:3]) > 380 else (255, 255, 255, 255)
-            draw.text((tx1 + 4, ty1 + 2), f_label, fill=f_text_color, font=self.font)
-            
-        # 2. Draw sub-detection bounding boxes (labels)
-        for l in labels:
-            lx1, ly1, lx2, ly2 = l["bbox"]
-            l_name = l["name"]
-            l_conf = l["conf"]
-            l_color = self.class_colors.get(l_name, (255, 255, 255, 255))
-            l_desc = self.class_descriptive_names.get(l_name, l_name)
-            
-            # Draw semi-transparent background overlay inside bounding box (alpha 0.15 -> 38 out of 255)
-            draw.rectangle([lx1, ly1, lx2, ly2], fill=(l_color[0], l_color[1], l_color[2], 38))
-            
-            # Draw 2px rectangle outline (hollow outline to keep items visible inside)
-            draw.rectangle([lx1, ly1, lx2, ly2], outline=l_color, width=2)
-            
-            # Draw text label above the rectangle (larger and more readable)
-            l_label = f"{l_desc} ({l_conf * 100:.1f}%)"
-            try:
-                tw = draw.textlength(l_label, font=self.font)
-            except Exception:
-                tw = len(l_label) * 11.5  # Adjusted for larger font
-
-            tx1 = lx1
-            ty1 = max(0, ly1 - 24)  # Increased from 18 to 24
-            tx2 = tx1 + tw + 8
-            ty2 = ty1 + 24  # Increased from 18 to 24
-
-            # Solid label background for high contrast
-            draw.rectangle([tx1, ty1, tx2, ty2], fill=l_color)
-
-            # Larger label text color dynamically selected based on color brightness
-            l_text_color = (0, 0, 0, 255) if sum(l_color[:3]) > 380 else (255, 255, 255, 255)
-            draw.text((tx1 + 4, ty1 + 2), l_label, fill=l_text_color, font=self.font)
-            
-        # 3. Draw parent bottles and details cards
+        # 1. Draw parent bottles and details cards FIRST so they are at the bottom layer
         for idx, bottle in enumerate(detected_bottles):
             obj_id = bottle["track_id"]
             bx1, by1, bx2, by2 = bottle["bbox"]
@@ -446,10 +381,7 @@ class YOLOInference:
             stats[matched_label_name] += 1
             avg_conf = (fill_conf + label_conf) / 2
             
-            # Draw semi-transparent background overlay inside parent bottle box (alpha 0.15 -> 38 out of 255)
-            draw.rectangle([bx1, by1, bx2, by2], fill=(color[0], color[1], color[2], 38))
-            
-            # Draw Thick Bounding Box around the bottle (hollow outline to keep items visible inside)
+            # Draw Thick Bounding Box around the bottle (hollow, no fill, to keep items visible inside)
             draw.rectangle([bx1, by1, bx2, by2], outline=color, width=4)
 
             # Draw bottle label on the bounding box (Omitted ID as requested, showing Bottle tag)
@@ -520,6 +452,86 @@ class YOLOInference:
                         )
             
             detections_list.append(detection_info)
+
+        # 2. Draw sub-detection bounding boxes LAST (fills) on top of the parent bottles
+        for f in fills:
+            fx1, fy1, fx2, fy2 = f["bbox"]
+            f_name = f["name"]
+            f_conf = f["conf"]
+            f_color = self.class_colors.get(f_name, (255, 255, 255, 255))
+            f_desc = self.class_descriptive_names.get(f_name, f_name)
+            
+            # Slightly shrink sub-detection coordinates inwards to avoid overlapping/hiding under bottle borders
+            fx1_draw = fx1 + 4
+            fx2_draw = fx2 - 4
+            fy1_draw = fy1 + 2
+            fy2_draw = fy2 - 2
+            if fx1_draw >= fx2_draw:
+                fx1_draw, fx2_draw = fx1, fx2
+            if fy1_draw >= fy2_draw:
+                fy1_draw, fy2_draw = fy1, fy2
+            
+            # Draw 2px rectangle outline (hollow, no fill, to keep items visible inside)
+            draw.rectangle([fx1_draw, fy1_draw, fx2_draw, fy2_draw], outline=f_color, width=2)
+            
+            # Draw text label above the rectangle (larger and more readable)
+            f_label = f"{f_desc} ({f_conf * 100:.1f}%)"
+            try:
+                tw = draw.textlength(f_label, font=self.font)
+            except Exception:
+                tw = len(f_label) * 11.5  # Adjusted for larger font
+
+            tx1 = fx1_draw
+            ty1 = max(0, fy1_draw - 24)  # Increased from 18 to 24
+            tx2 = tx1 + tw + 8
+            ty2 = ty1 + 24  # Increased from 18 to 24
+
+            # Solid label background for high contrast
+            draw.rectangle([tx1, ty1, tx2, ty2], fill=f_color)
+
+            # Larger label text color dynamically selected based on color brightness
+            f_text_color = (0, 0, 0, 255) if sum(f_color[:3]) > 380 else (255, 255, 255, 255)
+            draw.text((tx1 + 4, ty1 + 2), f_label, fill=f_text_color, font=self.font)
+            
+        # 3. Draw sub-detection bounding boxes LAST (labels) on top of the parent bottles
+        for l in labels:
+            lx1, ly1, lx2, ly2 = l["bbox"]
+            l_name = l["name"]
+            l_conf = l["conf"]
+            l_color = self.class_colors.get(l_name, (255, 255, 255, 255))
+            l_desc = self.class_descriptive_names.get(l_name, l_name)
+            
+            # Slightly shrink sub-detection coordinates inwards to avoid overlapping/hiding under bottle borders
+            lx1_draw = lx1 + 4
+            lx2_draw = lx2 - 4
+            ly1_draw = ly1 + 2
+            ly2_draw = ly2 - 2
+            if lx1_draw >= lx2_draw:
+                lx1_draw, lx2_draw = lx1, lx2
+            if ly1_draw >= ly2_draw:
+                ly1_draw, ly2_draw = ly1, ly2
+            
+            # Draw 2px rectangle outline (hollow, no fill, to keep items visible inside)
+            draw.rectangle([lx1_draw, ly1_draw, lx2_draw, ly2_draw], outline=l_color, width=2)
+            
+            # Draw text label above the rectangle (larger and more readable)
+            l_label = f"{l_desc} ({l_conf * 100:.1f}%)"
+            try:
+                tw = draw.textlength(l_label, font=self.font)
+            except Exception:
+                tw = len(l_label) * 11.5  # Adjusted for larger font
+
+            tx1 = lx1_draw
+            ty1 = max(0, ly1_draw - 24)  # Increased from 18 to 24
+            tx2 = tx1 + tw + 8
+            ty2 = ty1 + 24  # Increased from 18 to 24
+
+            # Solid label background for high contrast
+            draw.rectangle([tx1, ty1, tx2, ty2], fill=l_color)
+
+            # Larger label text color dynamically selected based on color brightness
+            l_text_color = (0, 0, 0, 255) if sum(l_color[:3]) > 380 else (255, 255, 255, 255)
+            draw.text((tx1 + 4, ty1 + 2), l_label, fill=l_text_color, font=self.font)
 
         # Save logs to database asynchronously
         if db_logs_to_insert and is_inference_frame:

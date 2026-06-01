@@ -32,12 +32,12 @@ const LiveDetection = () => {
 
   // Confidence thresholds
   const [confidenceThresholds, setConfidenceThresholds] = useState({
-    bottle: 0.40,
-    proper_fill: 0.55,
-    under_fill: 0.35,
+    bottle: 0.35,
+    proper_fill: 0.35,
+    under_fill: 0.30,
     over_fill: 0.30,
-    label_proper: 0.50,
-    label_torn: 0.35,
+    label_proper: 0.35,
+    label_torn: 0.30,
     label_missing: 0.30
   });
   const [loadingThresholds, setLoadingThresholds] = useState(false);

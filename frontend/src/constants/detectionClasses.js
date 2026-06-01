@@ -8,7 +8,7 @@ export const DEFAULT_DETECTION_CLASSES = [
     displayName: 'Bottle',
     color: '#3B82F6',
     enabled: true,
-    confidenceThreshold: 0.40,
+    confidenceThreshold: 0.35,
     category: 'object'
   },
   {
@@ -17,7 +17,7 @@ export const DEFAULT_DETECTION_CLASSES = [
     displayName: 'Proper Fill',
     color: '#10B981',
     enabled: true,
-    confidenceThreshold: 0.55,
+    confidenceThreshold: 0.35,
     category: 'fill'
   },
   {
@@ -26,7 +26,7 @@ export const DEFAULT_DETECTION_CLASSES = [
     displayName: 'Under Fill',
     color: '#F59E0B',
     enabled: true,
-    confidenceThreshold: 0.35,
+    confidenceThreshold: 0.30,
     category: 'fill'
   },
   {
@@ -44,7 +44,7 @@ export const DEFAULT_DETECTION_CLASSES = [
     displayName: 'Label Proper',
     color: '#10B981',
     enabled: true,
-    confidenceThreshold: 0.50,
+    confidenceThreshold: 0.35,
     category: 'label'
   },
   {
@@ -53,7 +53,7 @@ export const DEFAULT_DETECTION_CLASSES = [
     displayName: 'Label Torn',
     color: '#F59E0B',
     enabled: true,
-    confidenceThreshold: 0.35,
+    confidenceThreshold: 0.30,
     category: 'label'
   },
   {
