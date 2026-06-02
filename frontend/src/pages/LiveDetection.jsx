@@ -187,12 +187,12 @@ const LiveDetection = () => {
       <div style={{
         display: 'flex',
         flexWrap: 'wrap',
-        gap: theme.spacing.xs,
-        padding: '0.45rem',
+        gap: '0.75rem',
+        padding: '0.65rem',
         backgroundColor: theme.colors.surface,
         borderRadius: theme.borderRadius.xl,
         border: `1px solid ${theme.colors.border}`,
-        boxShadow: theme.shadows.sm
+        boxShadow: theme.shadows.md
       }}>
         {tabs.map((tab) => (
           <button
@@ -201,26 +201,33 @@ const LiveDetection = () => {
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '0.5rem',
-              padding: '0.55rem 1rem',
+              gap: '0.75rem',
+              padding: '0.85rem 1.75rem',
               borderRadius: theme.borderRadius.lg,
               border: 'none',
               backgroundColor: activeTab === tab.id ? theme.colors.primary : 'transparent',
               color: activeTab === tab.id ? '#FFFFFF' : theme.colors.text.secondary,
               fontFamily: theme.typography.fontFamily.heading,
-              fontSize: '0.725rem',
-              fontWeight: activeTab === tab.id ? 700 : 500,
+              fontSize: '0.9rem',
+              fontWeight: activeTab === tab.id ? 700 : 600,
               cursor: 'pointer',
-              transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)'
+              boxShadow: activeTab === tab.id ? '0 4px 15px rgba(59, 130, 246, 0.3)' : 'none',
+              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
             }}
             onMouseEnter={(e) => {
-              if (activeTab !== tab.id) e.currentTarget.style.backgroundColor = theme.colors.surfaceHover;
+              if (activeTab !== tab.id) {
+                e.currentTarget.style.backgroundColor = theme.colors.surfaceHover;
+                e.currentTarget.style.color = theme.colors.text.primary;
+              }
             }}
             onMouseLeave={(e) => {
-              if (activeTab !== tab.id) e.currentTarget.style.backgroundColor = 'transparent';
+              if (activeTab !== tab.id) {
+                e.currentTarget.style.backgroundColor = 'transparent';
+                e.currentTarget.style.color = theme.colors.text.secondary;
+              }
             }}
           >
-            <tab.icon size={13} style={{ shrink: 0 }} />
+            <tab.icon size={18} style={{ shrink: 0 }} />
             <span>{tab.name}</span>
           </button>
         ))}

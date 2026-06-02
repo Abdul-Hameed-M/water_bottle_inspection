@@ -106,7 +106,7 @@ const Login = ({ onLoginSuccess }) => {
             }
           `}</style>
           <img 
-            src="/seewise_3d_logo.png" 
+            src="/seewise_logo.png" 
             alt="SeeWise Logo" 
             style={{
               height: '9rem',

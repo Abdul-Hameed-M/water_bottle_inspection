@@ -114,6 +114,9 @@ const DetectionFeed = ({ activeTab, sourceUrl = "", cameraIndex = 0, uploadedIns
         }
 
         try {
+          if (!navigator.mediaDevices) {
+            throw new TypeError("Browser block: mediaDevices is undefined. Camera access requires a Secure Context (HTTPS or localhost). If you are accessing via a local network IP address, browsers restrict and disable the camera API.");
+          }
           let stream = null;
           let retryCount = 0;
           const maxRetries = 1;
@@ -173,7 +176,9 @@ const DetectionFeed = ({ activeTab, sourceUrl = "", cameraIndex = 0, uploadedIns
           }
 
           let errorMessage = "Could not access the camera. ";
-          if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+          if (err instanceof TypeError && err.message.includes("Browser block: mediaDevices is undefined")) {
+            errorMessage = "Camera blocked: Browsers restrict camera access to Secure Contexts (HTTPS or localhost). Please open the application using http://localhost:3000 in your browser instead of the Network IP.";
+          } else if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
             errorMessage += isMac 
               ? "Permission denied. Please enable Mac camera permissions in System Settings -> Privacy & Security -> Camera for your browser."
               : "Permission denied. Please check your browser privacy settings.";
@@ -183,7 +188,7 @@ const DetectionFeed = ({ activeTab, sourceUrl = "", cameraIndex = 0, uploadedIns
             errorMessage += `Error: ${err.message || err.name}`;
           }
 
-          showToast(errorMessage, 'error', 4000);
+          showToast(errorMessage, 'error', 5000);
           return;
         }
 
@@ -336,14 +341,19 @@ const DetectionFeed = ({ activeTab, sourceUrl = "", cameraIndex = 0, uploadedIns
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.lg }}>
       
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: theme.spacing.lg
-      }}>
+      <div 
+        style={{
+          display: 'grid',
+          gap: theme.spacing.lg
+        }}
+        className="grid-cols-1 lg:grid-cols-12"
+      >
         
-        {/* Live stream view screen panel */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.md }}>
+        {/* Left Side: Live stream view screen panel + Controls */}
+        <div 
+          style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.md, height: '100%' }}
+          className="lg:col-span-7"
+        >
           
           <div style={{
             borderRadius: theme.borderRadius['2xl'],
@@ -353,7 +363,8 @@ const DetectionFeed = ({ activeTab, sourceUrl = "", cameraIndex = 0, uploadedIns
             transition: 'all 0.15s ease',
             boxShadow: theme.shadows.md,
             display: 'flex',
-            flexDirection: 'column'
+            flexDirection: 'column',
+            flex: 1
           }}>
             
             {/* SCADA Stream telemetry header bar */}
@@ -400,12 +411,13 @@ const DetectionFeed = ({ activeTab, sourceUrl = "", cameraIndex = 0, uploadedIns
             {/* Video screen box canvas */}
             <div style={{
               position: 'relative',
-              aspectRatio: '16/9',
+              flex: 1,
               backgroundColor: '#000000',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              overflow: 'hidden'
+              overflow: 'hidden',
+              minHeight: '380px'
             }}>
               {imageSrc ? (
                 <img src={imageSrc} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Inspection Core Stream" />
@@ -420,8 +432,6 @@ const DetectionFeed = ({ activeTab, sourceUrl = "", cameraIndex = 0, uploadedIns
                   </div>
                 </div>
               )}
-
-
             </div>
 
           </div>
@@ -529,180 +539,259 @@ const DetectionFeed = ({ activeTab, sourceUrl = "", cameraIndex = 0, uploadedIns
                 <span style={{ color: isModelRunning ? theme.colors.success : theme.colors.text.tertiary }}>YOLO RUNNING</span>
               </div>
             </div>
-
           </div>
-
         </div>
 
-        {/* Bounding items sidebar counter list */}
-        <Card title="Metrics Accumulators" padding="lg">
-          
-          {/* Shift telemetry dials grid */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: theme.spacing.md,
-            marginBottom: theme.spacing.md,
-            fontFamily: theme.typography.fontFamily.mono
-          }}>
+        {/* Right Side: Metrics accumulator running */}
+        <div className="lg:col-span-5" style={{ display: 'flex', flexDirection: 'column' }}>
+          <Card 
+            title="Metrics Accumulator" 
+            padding="lg"
+            style={{ 
+              height: '100%', 
+              display: 'flex', 
+              flexDirection: 'column', 
+              boxShadow: theme.shadows.md,
+              border: `1px solid ${theme.colors.border}` 
+            }}
+          >
+            {/* Real-time Telemetry Pulse Status Bar */}
             <div style={{
-              backgroundColor: theme.colors.surfaceHover,
-              border: `1px solid ${theme.colors.border}`,
-              padding: '1.25rem 1rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '0.75rem 1rem',
+              backgroundColor: isDark ? '#0A0E1A' : '#F1F5F9',
+              border: `1px solid ${isDark ? 'rgba(59, 130, 246, 0.2)' : 'rgba(37, 99, 235, 0.15)'}`,
               borderRadius: theme.borderRadius.xl,
-              textAlign: 'center',
-              boxShadow: theme.shadows.sm
+              marginBottom: theme.spacing.md,
+              boxShadow: isDark ? '0 0 15px rgba(59, 130, 246, 0.05)' : 'none',
+              fontFamily: theme.typography.fontFamily.mono,
+              transition: 'all 0.3s ease'
             }}>
-              <span style={{ fontSize: '0.75rem', color: theme.colors.text.secondary, textTransform: 'uppercase', display: 'block', fontWeight: 700, letterSpacing: '0.05em' }}>Shift Total</span>
-              <span style={{ fontSize: '2.25rem', fontWeight: 800, color: theme.colors.text.primary, fontFamily: theme.typography.fontFamily.heading, display: 'block', marginTop: '0.25rem' }}>{stats.total_bottles}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span style={{
+                  position: 'relative',
+                  display: 'flex',
+                  height: '8px',
+                  width: '8px'
+                }}>
+                  <span style={{
+                    animation: 'ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite',
+                    position: 'absolute',
+                    inlineSize: '100%',
+                    blockSize: '100%',
+                    borderRadius: '50%',
+                    backgroundColor: isOnline ? theme.colors.success : theme.colors.text.tertiary,
+                    opacity: 0.75
+                  }} />
+                  <span style={{
+                    position: 'relative',
+                    borderRadius: '50%',
+                    height: '8px',
+                    width: '8px',
+                    backgroundColor: isOnline ? theme.colors.success : theme.colors.text.tertiary
+                  }} />
+                </span>
+                <span style={{ fontSize: '0.675rem', fontWeight: 800, color: isOnline ? theme.colors.success : theme.colors.text.secondary, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  {isOnline ? 'TELEMETRY ONLINE' : 'TELEMETRY STANDBY'}
+                </span>
+              </div>
+              <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.675rem', fontWeight: 700 }}>
+                <span style={{ color: theme.colors.text.secondary }}>
+                  LATEST ID: <strong style={{ color: theme.colors.primary, textShadow: isDark ? `0 0 8px ${theme.colors.primary}40` : 'none' }}>
+                    {detections.length > 0 ? `#${detections[detections.length - 1].bottle_id}` : 'N/A'}
+                  </strong>
+                </span>
+              </div>
             </div>
             
+            {/* Shift telemetry dials grid */}
             <div style={{
-              backgroundColor: 'rgba(16, 185, 129, 0.06)',
-              border: '1px solid rgba(16, 185, 129, 0.2)',
-              padding: '1.25rem 1rem',
-              borderRadius: theme.borderRadius.xl,
-              textAlign: 'center',
-              boxShadow: '0 0 10px rgba(16, 185, 129, 0.05)'
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: theme.spacing.md,
+              marginBottom: theme.spacing.md,
+              fontFamily: theme.typography.fontFamily.mono
             }}>
-              <span style={{ fontSize: '0.75rem', color: theme.colors.success, textTransform: 'uppercase', display: 'block', fontWeight: 700, letterSpacing: '0.05em' }}>Verdict OK</span>
-              <span style={{ fontSize: '2.25rem', fontWeight: 800, color: theme.colors.success, fontFamily: theme.typography.fontFamily.heading, display: 'block', marginTop: '0.25rem' }}>{stats.passed}</span>
-            </div>
-
-            <div style={{
-              backgroundColor: 'rgba(239, 68, 68, 0.06)',
-              border: '1px solid rgba(239, 68, 68, 0.2)',
-              padding: '1.25rem 1rem',
-              borderRadius: theme.borderRadius.xl,
-              textAlign: 'center',
-              gridColumn: 'span 2',
-              boxShadow: '0 0 10px rgba(239, 68, 68, 0.05)'
-            }}>
-              <span style={{ fontSize: '0.75rem', color: theme.colors.error, textTransform: 'uppercase', display: 'block', fontWeight: 700, letterSpacing: '0.05em' }}>Verdict Reject</span>
-              <span style={{ fontSize: '2.25rem', fontWeight: 800, color: theme.colors.error, fontFamily: theme.typography.fontFamily.heading, display: 'block', marginTop: '0.25rem' }}>{stats.failed}</span>
-            </div>
-
-            {/* Fill verification summary */}
-            <div style={{
-              gridColumn: 'span 2',
-              backgroundColor: theme.colors.surfaceHover,
-              border: `1px solid ${theme.colors.border}`,
-              padding: '1rem',
-              borderRadius: theme.borderRadius.xl,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.5rem'
-            }}>
-              <span style={{ fontSize: '0.7rem', color: theme.colors.text.secondary, textTransform: 'uppercase', fontWeight: 700, borderBottom: `1px dashed ${theme.colors.border}`, paddingBottom: '0.35rem', display: 'block', letterSpacing: '0.025em' }}>Fill verification</span>
-              <div style={{ display: 'flex', justifyContent: 'space-between', textAlign: 'center', fontSize: '0.875rem', fontWeight: 700 }}>
-                <div style={{ flex: 1 }}>
-                  <span style={{ color: theme.colors.text.tertiary, display: 'block', fontSize: '0.625rem', marginBottom: '0.125rem' }}>PROPER</span>
-                  <span style={{ color: theme.colors.success, fontSize: '1.1rem' }}>{stats.proper_fill}</span>
-                </div>
-                <div style={{ flex: 1, borderLeft: `1px solid ${theme.colors.border}`, borderRight: `1px solid ${theme.colors.border}` }}>
-                  <span style={{ color: theme.colors.text.tertiary, display: 'block', fontSize: '0.625rem', marginBottom: '0.125rem' }}>UNDER</span>
-                  <span style={{ color: theme.colors.error, fontSize: '1.1rem' }}>{stats.under_fill}</span>
-                </div>
-                <div style={{ flex: 1 }}>
-                  <span style={{ color: theme.colors.text.tertiary, display: 'block', fontSize: '0.625rem', marginBottom: '0.125rem' }}>OVER</span>
-                  <span style={{ color: theme.colors.warning, fontSize: '1.1rem' }}>{stats.over_fill}</span>
-                </div>
+              
+              {/* SHIFT TOTAL COUNT DIAL */}
+              <div style={{
+                backgroundColor: isDark ? 'rgba(59, 130, 246, 0.06)' : 'rgba(37, 99, 235, 0.03)',
+                border: `1px solid ${isDark ? 'rgba(59, 130, 246, 0.2)' : 'rgba(37, 99, 235, 0.15)'}`,
+                padding: '1.25rem 1rem',
+                borderRadius: theme.borderRadius.xl,
+                textAlign: 'center',
+                boxShadow: isDark ? '0 0 15px rgba(59, 130, 246, 0.1)' : theme.shadows.sm,
+                position: 'relative',
+                overflow: 'hidden',
+                gridColumn: 'span 2'
+              }}>
+                <div style={{
+                  position: 'absolute',
+                  top: '-50%',
+                  left: '-50%',
+                  width: '200%',
+                  height: '200%',
+                  background: 'radial-gradient(circle, rgba(59,130,246,0.08) 0%, transparent 70%)',
+                  pointerEvents: 'none'
+                }} />
+                <span style={{ fontSize: '0.75rem', color: theme.colors.primary, textTransform: 'uppercase', display: 'block', fontWeight: 800, letterSpacing: '0.05em' }}>Shift Bottle Count</span>
+                <span style={{ fontSize: '2.75rem', fontWeight: 900, color: theme.colors.text.primary, fontFamily: theme.typography.fontFamily.heading, display: 'block', marginTop: '0.25rem', textShadow: isDark ? '0 0 12px rgba(59, 130, 246, 0.4)' : 'none' }}>
+                  {stats.total_bottles}
+                </span>
               </div>
-            </div>
-
-            {/* Label verification summary */}
-            <div style={{
-              gridColumn: 'span 2',
-              backgroundColor: theme.colors.surfaceHover,
-              border: `1px solid ${theme.colors.border}`,
-              padding: '1rem',
-              borderRadius: theme.borderRadius.xl,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.5rem'
-            }}>
-              <span style={{ fontSize: '0.7rem', color: theme.colors.text.secondary, textTransform: 'uppercase', fontWeight: 700, borderBottom: `1px dashed ${theme.colors.border}`, paddingBottom: '0.35rem', display: 'block', letterSpacing: '0.025em' }}>Label verification</span>
-              <div style={{ display: 'flex', justifyContent: 'space-between', textAlign: 'center', fontSize: '0.875rem', fontWeight: 700 }}>
-                <div style={{ flex: 1 }}>
-                  <span style={{ color: theme.colors.text.tertiary, display: 'block', fontSize: '0.625rem', marginBottom: '0.125rem' }}>PROPER</span>
-                  <span style={{ color: theme.colors.success, fontSize: '1.1rem' }}>{stats.label_proper}</span>
-                </div>
-                <div style={{ flex: 1, borderLeft: `1px solid ${theme.colors.border}`, borderRight: `1px solid ${theme.colors.border}` }}>
-                  <span style={{ color: theme.colors.text.tertiary, display: 'block', fontSize: '0.625rem', marginBottom: '0.125rem' }}>TORN</span>
-                  <span style={{ color: theme.colors.warning, fontSize: '1.1rem' }}>{stats.label_torn}</span>
-                </div>
-                <div style={{ flex: 1 }}>
-                  <span style={{ color: theme.colors.text.tertiary, display: 'block', fontSize: '0.625rem', marginBottom: '0.125rem' }}>MISSING</span>
-                  <span style={{ color: theme.colors.error, fontSize: '1.1rem' }}>{stats.label_missing}</span>
-                </div>
+              
+              <div style={{
+                backgroundColor: 'rgba(16, 185, 129, 0.06)',
+                border: '1px solid rgba(16, 185, 129, 0.2)',
+                padding: '1.1rem 0.85rem',
+                borderRadius: theme.borderRadius.xl,
+                textAlign: 'center',
+                boxShadow: '0 0 10px rgba(16, 185, 129, 0.05)'
+              }}>
+                <span style={{ fontSize: '0.7rem', color: theme.colors.success, textTransform: 'uppercase', display: 'block', fontWeight: 700, letterSpacing: '0.05em' }}>Verdict OK</span>
+                <span style={{ fontSize: '2rem', fontWeight: 800, color: theme.colors.success, fontFamily: theme.typography.fontFamily.heading, display: 'block', marginTop: '0.25rem' }}>{stats.passed}</span>
               </div>
-            </div>
-          </div>
 
-          <div style={{ borderTop: `1px solid ${theme.colors.border}`, paddingTop: theme.spacing.md, display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.sm }}>
-            <h4 style={{ margin: 0, fontSize: '0.725rem', fontWeight: 700, color: theme.colors.text.primary, fontFamily: theme.typography.fontFamily.heading, textTransform: 'uppercase', letterSpacing: '0.025em' }}>Active Frame Items</h4>
-            <Badge variant="ghost" size="small">{detections.length} In Frame</Badge>
-          </div>
+              <div style={{
+                backgroundColor: 'rgba(239, 68, 68, 0.06)',
+                border: '1px solid rgba(239, 68, 68, 0.2)',
+                padding: '1.1rem 0.85rem',
+                borderRadius: theme.borderRadius.xl,
+                textAlign: 'center',
+                boxShadow: '0 0 10px rgba(239, 68, 68, 0.05)'
+              }}>
+                <span style={{ fontSize: '0.7rem', color: theme.colors.error, textTransform: 'uppercase', display: 'block', fontWeight: 700, letterSpacing: '0.05em' }}>Verdict Reject</span>
+                <span style={{ fontSize: '2rem', fontWeight: 800, color: theme.colors.error, fontFamily: theme.typography.fontFamily.heading, display: 'block', marginTop: '0.25rem' }}>{stats.failed}</span>
+              </div>
 
-          {detections.length === 0 ? (
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: theme.colors.text.tertiary, textAlign: 'center', gap: '0.25rem', padding: '2rem 1rem' }}>
-              <AlertCircle size={20} className="animate-pulse" style={{ color: theme.colors.text.tertiary }} />
-              <span style={{ fontSize: '0.725rem', fontWeight: 700 }}>Shift Line Empty</span>
-              <span style={{ fontSize: '0.625rem', maxWidth: '170px' }}>Place containers under camera focal frame nodes.</span>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', overflowY: 'auto', maxHeight: '250px', paddingRight: '0.25rem' }}>
-              {detections.map((det) => {
-                let badgeVariant = "success";
-                if (det.pass_fail === 'FAIL') badgeVariant = "error";
-                if (det.pass_fail === 'WARNING') badgeVariant = "warning";
-
-                return (
-                  <div 
-                    key={det.bottle_id} 
-                    style={{ 
-                      padding: '0.75rem', 
-                      borderRadius: theme.borderRadius.xl, 
-                      backgroundColor: theme.colors.surfaceHover, 
-                      border: `1px solid ${theme.colors.border}`,
-                      borderLeft: `3px solid ${det.pass_fail === 'FAIL' ? theme.colors.error : det.pass_fail === 'WARNING' ? theme.colors.warning : theme.colors.success}`,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '0.35rem'
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: theme.colors.text.primary, fontFamily: theme.typography.fontFamily.heading }}>Bottle #{det.bottle_id}</span>
-                      <Badge variant={badgeVariant} size="small" glow>{det.pass_fail}</Badge>
-                    </div>
-                    
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', fontSize: '0.675rem' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', color: theme.colors.text.secondary }}>
-                        <span>Fluid Vol:</span>
-                        <strong style={{ color: det.fill_status === 'under_fill' ? theme.colors.error : det.fill_status === 'over_fill' ? theme.colors.warning : theme.colors.success, textTransform: 'capitalize' }}>
-                          {det.fill_status.replace('_', ' ')}
-                        </strong>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', color: theme.colors.text.secondary }}>
-                        <span>Labeling:</span>
-                        <strong style={{ color: det.label_status === 'label_missing' ? theme.colors.error : det.label_status === 'label_torn' ? theme.colors.warning : theme.colors.success, textTransform: 'capitalize' }}>
-                          {det.label_status.replace('_', ' ')}
-                        </strong>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', color: theme.colors.text.secondary }}>
-                        <span>Confidence:</span>
-                        <strong style={{ color: theme.colors.text.primary, fontFamily: theme.typography.fontFamily.mono }}>{(det.confidence * 100).toFixed(1)}%</strong>
-                      </div>
-                    </div>
+              {/* Fill verification summary */}
+              <div style={{
+                gridColumn: 'span 2',
+                backgroundColor: theme.colors.surfaceHover,
+                border: `1px solid ${theme.colors.border}`,
+                padding: '0.85rem',
+                borderRadius: theme.borderRadius.xl,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.4rem'
+              }}>
+                <span style={{ fontSize: '0.675rem', color: theme.colors.text.secondary, textTransform: 'uppercase', fontWeight: 700, borderBottom: `1px dashed ${theme.colors.border}`, paddingBottom: '0.35rem', display: 'block', letterSpacing: '0.025em' }}>Fill verification</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', textAlign: 'center', fontSize: '0.825rem', fontWeight: 700 }}>
+                  <div style={{ flex: 1 }}>
+                    <span style={{ color: theme.colors.text.tertiary, display: 'block', fontSize: '0.6rem', marginBottom: '0.125rem' }}>PROPER</span>
+                    <span style={{ color: theme.colors.success, fontSize: '1rem' }}>{stats.proper_fill}</span>
                   </div>
-                );
-              })}
+                  <div style={{ flex: 1, borderLeft: `1px solid ${theme.colors.border}`, borderRight: `1px solid ${theme.colors.border}` }}>
+                    <span style={{ color: theme.colors.text.tertiary, display: 'block', fontSize: '0.6rem', marginBottom: '0.125rem' }}>UNDER</span>
+                    <span style={{ color: theme.colors.error, fontSize: '1rem' }}>{stats.under_fill}</span>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <span style={{ color: theme.colors.text.tertiary, display: 'block', fontSize: '0.6rem', marginBottom: '0.125rem' }}>OVER</span>
+                    <span style={{ color: theme.colors.warning, fontSize: '1rem' }}>{stats.over_fill}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Label verification summary */}
+              <div style={{
+                gridColumn: 'span 2',
+                backgroundColor: theme.colors.surfaceHover,
+                border: `1px solid ${theme.colors.border}`,
+                padding: '0.85rem',
+                borderRadius: theme.borderRadius.xl,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.4rem'
+              }}>
+                <span style={{ fontSize: '0.675rem', color: theme.colors.text.secondary, textTransform: 'uppercase', fontWeight: 700, borderBottom: `1px dashed ${theme.colors.border}`, paddingBottom: '0.35rem', display: 'block', letterSpacing: '0.025em' }}>Label verification</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', textAlign: 'center', fontSize: '0.825rem', fontWeight: 700 }}>
+                  <div style={{ flex: 1 }}>
+                    <span style={{ color: theme.colors.text.tertiary, display: 'block', fontSize: '0.6rem', marginBottom: '0.125rem' }}>PROPER</span>
+                    <span style={{ color: theme.colors.success, fontSize: '1rem' }}>{stats.label_proper}</span>
+                  </div>
+                  <div style={{ flex: 1, borderLeft: `1px solid ${theme.colors.border}`, borderRight: `1px solid ${theme.colors.border}` }}>
+                    <span style={{ color: theme.colors.text.tertiary, display: 'block', fontSize: '0.6rem', marginBottom: '0.125rem' }}>TORN</span>
+                    <span style={{ color: theme.colors.warning, fontSize: '1rem' }}>{stats.label_torn}</span>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <span style={{ color: theme.colors.text.tertiary, display: 'block', fontSize: '0.6rem', marginBottom: '0.125rem' }}>MISSING</span>
+                    <span style={{ color: theme.colors.error, fontSize: '1rem' }}>{stats.label_missing}</span>
+                  </div>
+                </div>
+              </div>
             </div>
-          )}
 
-        </Card>
+            <div style={{ borderTop: `1px solid ${theme.colors.border}`, paddingTop: theme.spacing.md, display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.sm }}>
+              <h4 style={{ margin: 0, fontSize: '0.725rem', fontWeight: 700, color: theme.colors.text.primary, fontFamily: theme.typography.fontFamily.heading, textTransform: 'uppercase', letterSpacing: '0.025em' }}>Active Frame Items</h4>
+              <Badge variant="ghost" size="small">{detections.length} In Frame</Badge>
+            </div>
+
+            {detections.length === 0 ? (
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: theme.colors.text.tertiary, textAlign: 'center', gap: '0.25rem', padding: '2rem 1rem' }}>
+                <AlertCircle size={20} className="animate-pulse" style={{ color: theme.colors.text.tertiary }} />
+                <span style={{ fontSize: '0.725rem', fontWeight: 700 }}>Shift Line Empty</span>
+                <span style={{ fontSize: '0.625rem', maxWidth: '170px' }}>Place containers under camera focal frame nodes.</span>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', overflowY: 'auto', maxHeight: '350px', paddingRight: '0.25rem', flex: 1 }}>
+                {detections.map((det) => {
+                  let badgeVariant = "success";
+                  if (det.pass_fail === 'FAIL') badgeVariant = "error";
+                  if (det.pass_fail === 'WARNING') badgeVariant = "warning";
+
+                  return (
+                    <div 
+                      key={det.bottle_id} 
+                      style={{ 
+                        padding: '0.75rem', 
+                        borderRadius: theme.borderRadius.xl, 
+                        backgroundColor: theme.colors.surfaceHover, 
+                        border: `1px solid ${theme.colors.border}`,
+                        borderLeft: `4px solid ${det.pass_fail === 'FAIL' ? theme.colors.error : det.pass_fail === 'WARNING' ? theme.colors.warning : theme.colors.success}`,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.35rem',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 800, color: theme.colors.text.primary, fontFamily: theme.typography.fontFamily.heading }}>
+                          Bottle ID: <strong style={{ color: theme.colors.primary }}>#{det.bottle_id}</strong>
+                        </span>
+                        <Badge variant={badgeVariant} size="small" glow>{det.pass_fail}</Badge>
+                      </div>
+                      
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', fontSize: '0.675rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', color: theme.colors.text.secondary }}>
+                          <span>Fluid Vol:</span>
+                          <strong style={{ color: det.fill_status === 'under_fill' ? theme.colors.error : det.fill_status === 'over_fill' ? theme.colors.warning : theme.colors.success, textTransform: 'capitalize' }}>
+                            {det.fill_status.replace('_', ' ')}
+                          </strong>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', color: theme.colors.text.secondary }}>
+                          <span>Labeling:</span>
+                          <strong style={{ color: det.label_status === 'label_missing' ? theme.colors.error : det.label_status === 'label_torn' ? theme.colors.warning : theme.colors.success, textTransform: 'capitalize' }}>
+                            {det.label_status.replace('_', ' ')}
+                          </strong>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', color: theme.colors.text.secondary }}>
+                          <span>Confidence:</span>
+                          <strong style={{ color: theme.colors.text.primary, fontFamily: theme.typography.fontFamily.mono }}>{(det.confidence * 100).toFixed(1)}%</strong>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Card>
+        </div>
+
       </div>
-
+      
     </div>
   );
 };

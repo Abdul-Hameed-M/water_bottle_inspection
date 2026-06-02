@@ -33,7 +33,7 @@ const MainLayout = ({ children, user, onLogout }) => {
         <main style={{
           flex: 1,
           padding: '1.5rem 2rem',
-          maxWidth: '80rem',
+          maxWidth: '96rem',
           margin: '0 auto',
           width: '100%',
           overflowX: 'hidden'

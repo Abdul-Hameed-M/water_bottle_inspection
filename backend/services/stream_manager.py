@@ -60,33 +60,57 @@ class StreamManager:
         }
 
     def _open_webcam(self, index: int):
-        """Open macOS webcam via AVFoundation; never fall back to uploaded files."""
+        """
+        Open webcam using the exact same platform-specific backend as test.py:
+          - macOS  → AVFoundation (cv2.CAP_AVFOUNDATION)
+          - Windows → DirectShow  (cv2.CAP_DSHOW)
+          - Linux   → default backend
+        Resolution and buffer settings also match test.py.
+        """
+        import sys as _sys
+
         for attempt_idx in [index, 1, 2, 0]:
             cap = None
             try:
-                cap = cv2.VideoCapture(attempt_idx, cv2.CAP_AVFOUNDATION)
+                print(f"Opening source...")
+                # Platform-specific backend – identical to test.py
+                if _sys.platform == "darwin":
+                    cap = cv2.VideoCapture(attempt_idx, cv2.CAP_AVFOUNDATION)
+                elif os.name == "nt":
+                    cap = cv2.VideoCapture(attempt_idx, cv2.CAP_DSHOW)
+                else:
+                    cap = cv2.VideoCapture(attempt_idx)
             except Exception as e:
                 logger.error(f"Failed to open webcam at index {attempt_idx}: {e}")
                 continue
+
             if cap is None or not cap.isOpened():
                 if cap is not None:
                     cap.release()
                 logger.warning(f"Webcam at index {attempt_idx} is not available")
                 continue
 
+            # Camera optimisation – same as test.py
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+            cap.set(cv2.CAP_PROP_FPS, 30)
             cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
-            cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 
-            # Warm-up reads (macOS sometimes returns empty frames right after open)
+            # Stable exposure handling: explicitly enable auto-exposure if supported
+            try:
+                cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 3.0)  # 3.0 means AUTO in many OpenCV backends
+            except Exception:
+                pass
+
+            # Stable exposure & focus handling: perform 25 warm-up reads to let camera sensor adjust (Fix #4)
             frame = None
-            for _ in range(8):
+            for _ in range(25):
                 ret, frame = cap.read()
                 if ret and frame is not None and frame.size > 0:
-                    break
-                time.sleep(0.08)
+                    time.sleep(0.04)  # brief sleep to allow sensor adjustment
 
             if frame is not None and frame.size > 0:
+                print(f"Source opened successfully (index {attempt_idx})")
                 logger.info(f"Webcam ready at index {attempt_idx}")
                 return cap, attempt_idx, frame
 
@@ -136,7 +160,7 @@ class StreamManager:
             cap, test_frame = self._open_network_stream(self.source_url, "rtsp")
             if cap is not None and test_frame is not None:
                 self.cap = cap
-                self.last_frame = self._resize_frame_if_needed(test_frame)
+                self.last_frame = self._resize_frame_if_needed(test_frame, self.source_type)
                 self.last_successful_frame_time = time.time()
                 self.reconnect_attempts = 0
                 logger.info("RTSP reconnection successful")
@@ -209,8 +233,8 @@ class StreamManager:
             return None, None
 
         cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
-        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
 
         frame = None
         for _ in range(warm_attempts):
@@ -273,12 +297,13 @@ class StreamManager:
         logger.warning(f"IP camera failed. Tried: {tried}")
         return None, None, None, None
 
-    def _resize_frame_if_needed(self, frame):
+    def _resize_frame_if_needed(self, frame, source_type=None):
         h, w = frame.shape[:2]
-        if w > 640:
-            scale = 640.0 / w
+        max_width = 960 if source_type in ("webcam", "ipcam", "rtsp") else 640
+        if w > max_width:
+            scale = max_width / w
             new_h = int(h * scale)
-            frame = cv2.resize(frame, (640, new_h), interpolation=cv2.INTER_AREA)
+            frame = cv2.resize(frame, (max_width, new_h), interpolation=cv2.INTER_AREA)
         return frame
 
     def start(self, source, source_type="webcam", yolo_inference=None, inspection_id="SYS001"):
@@ -368,11 +393,16 @@ class StreamManager:
                 return False
 
             if test_frame is not None:
-                self.last_frame = self._resize_frame_if_needed(test_frame)
+                self.last_frame = self._resize_frame_if_needed(test_frame, source_type)
+
+            if yolo_inference is not None and hasattr(yolo_inference, "reset_stream_state"):
+                yolo_inference.reset_stream_state(source_type)
 
             self.is_running = True
-            self.raw_queue = Queue(maxsize=2)
-            self.processed_queue = Queue(maxsize=2)
+            # Reduced frame buffering for live camera sources (Fix #4)
+            queue_size = 1 if source_type in ("webcam", "ipcam", "rtsp") else 2
+            self.raw_queue = Queue(maxsize=queue_size)
+            self.processed_queue = Queue(maxsize=queue_size)
             self.reconnect_attempts = 0
             self.last_successful_frame_time = time.time()
 
@@ -457,7 +487,7 @@ class StreamManager:
                         time.sleep(0.08)
                     continue
                 consecutive_failures = 0
-                frame = self._resize_frame_if_needed(frame)
+                frame = self._resize_frame_if_needed(frame, src_type)
                 self.last_frame = frame
                 self.last_successful_frame_time = time.time()
                 if self.raw_queue.full():
@@ -507,7 +537,7 @@ class StreamManager:
                 break
 
             consecutive_failures = 0
-            frame = self._resize_frame_if_needed(frame)
+            frame = self._resize_frame_if_needed(frame, src_type)
             self.last_frame = frame
             self.last_successful_frame_time = time.time()
 
@@ -559,6 +589,7 @@ class StreamManager:
                 if not self.is_running:
                     break
                 is_paused = self.paused
+                src_type = self.source_type
 
             if is_paused:
                 time.sleep(0.05)
@@ -579,7 +610,7 @@ class StreamManager:
 
             try:
                 processed_frame, stats, detections = yolo_inference.predict(
-                    frame, inspection_id=inspection_id
+                    frame, inspection_id=inspection_id, source_type=src_type
                 )
             except Exception as e:
                 print(f"[SeeWise Inference Thread] Predict error: {e}")
