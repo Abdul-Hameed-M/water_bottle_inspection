@@ -58,12 +58,12 @@ CLASS_COLORS_HEX = {
 LIVE_SOURCE_TYPES = frozenset({"webcam", "ipcam", "rtsp"})
 LIVE_CLASS_THRESHOLDS = {
     "bottle":        0.35,
-    "proper_fill":   0.55,
-    "under_fill":    0.55,
-    "over_fill":     0.35,
-    "label_proper":  0.55,
-    "label_torn":    0.55,
-    "label_missing": 0.55,
+    "proper_fill":   0.50,
+    "under_fill":    0.50,
+    "over_fill":     0.20,
+    "label_proper":  0.50,
+    "label_torn":    0.50,
+    "label_missing": 0.50,
 }
 
 
@@ -258,12 +258,12 @@ class YOLOInference:
         # Proper classes need stronger evidence; anomaly classes stay sensitive.
         self.class_confidence_thresholds = {
             "bottle":        0.35,
-            "proper_fill":   0.55,
-            "under_fill":    0.55,
-            "over_fill":     0.35,
-            "label_proper":  0.55,
-            "label_torn":    0.55,
-            "label_missing": 0.55,
+            "proper_fill":   0.50,
+            "under_fill":    0.50,
+            "over_fill":     0.20,
+            "label_proper":  0.50,
+            "label_torn":    0.50,
+            "label_missing": 0.50,
         }
 
         # ── Model loading (single instance, reused for all sources) ──────────
@@ -654,7 +654,24 @@ class YOLOInference:
             for rl in raw_labels:
                 cls_threshold = threshold_map.get(rl["name"], conf_threshold)
                 if rl["conf"] >= cls_threshold:
-                    accepted_labels.append(rl)
+                    # Enforce bottle-centric validation (Issue #1): reject label if it doesn't overlap a bottle
+                    has_overlap = False
+                    # Check overlap with raw bottles in current frame
+                    for rb in raw_bottles:
+                        overlap_ratio = _bbox_intersection_area(rl["bbox"], rb["bbox"]) / _bbox_area(rl["bbox"])
+                        if overlap_ratio > 0.40 or _center_inside(rl["bbox"], rb["bbox"]):
+                            has_overlap = True
+                            break
+                    # Check overlap with tracked bottles in our history
+                    if not has_overlap:
+                        for tb in self.tracked_bottles:
+                            overlap_ratio = _bbox_intersection_area(rl["bbox"], tb["bbox"]) / _bbox_area(rl["bbox"])
+                            if overlap_ratio > 0.40 or _center_inside(rl["bbox"], tb["bbox"]):
+                                has_overlap = True
+                                break
+                    
+                    if has_overlap:
+                        accepted_labels.append(rl)
 
             # 4. Determine accepted bottles based on thresholds and stability (Fix #3)
             accepted_bottles = []
