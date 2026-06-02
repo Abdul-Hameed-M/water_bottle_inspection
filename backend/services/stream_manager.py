@@ -232,16 +232,24 @@ class StreamManager:
         if not cap.isOpened():
             return None, None
 
-        cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+        # Camera optimisation – same as webcam (Fix #4)
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+        cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
 
+        # Stable exposure handling: explicitly enable auto-exposure if supported
+        try:
+            cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 3.0)  # 3.0 means AUTO in many OpenCV backends
+        except Exception:
+            pass
+
+        # Stable exposure & focus handling: perform 25 warm-up reads to let phone/CCTV sensor adjust (Fix #4)
         frame = None
-        for _ in range(warm_attempts):
+        warm_frames = max(warm_attempts, 25)
+        for _ in range(warm_frames):
             ret, frame = cap.read()
             if ret and frame is not None and frame.size > 0:
-                break
-            time.sleep(0.15)
+                time.sleep(0.04)  # brief sleep to allow sensor adjustment
 
         if frame is None or frame.size == 0:
             cap.release()
@@ -292,6 +300,10 @@ class StreamManager:
             frame = self._read_snapshot_frame(snap_url)
             if frame is not None and frame.size > 0:
                 logger.info(f"IP camera snapshot mode: {snap_url}")
+                # Stable exposure & focus handling: perform 5 warm-up snapshot reads (Fix #4)
+                for _ in range(5):
+                    self._read_snapshot_frame(snap_url)
+                    time.sleep(0.1)  # brief sleep to allow phone camera sensor adjustment
                 return None, frame, snap_url, snap_url
 
         logger.warning(f"IP camera failed. Tried: {tried}")
